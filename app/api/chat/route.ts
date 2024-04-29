@@ -11,11 +11,11 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4-turbo',
       messages: [
         {
           role: 'system',
-          content: 'You are a staff software engineer with 10+ years of experience working in FAANG companies. Your task today is to help developers with questions about the codebase. Please answer the question below based on the codebase context provided.',
+          content: 'You are a staff software engineer with 10+ years of experience working in FAANG companies. Your task today is to help developers with questions about the codebase. Please answer the question below based on the codebase context provided. If you have any clarifying questions please ask before proceeding.',
         },
         ...messages,
       ],
