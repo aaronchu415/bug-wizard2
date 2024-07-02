@@ -1,51 +1,46 @@
 'use client';
+import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from 'ai/react';
 import {
   Avatar,
   Box,
-  Divider,
   Flex,
-  Heading,
   IconButton,
-  InputGroup,
-  Text,
-  InputRightElement,
-  Stack,
-  Textarea,
+  useToast,
+  VStack,
+  Input,
+  keyframes
 } from '@chakra-ui/react';
-import { Fragment, useEffect, useRef, useState } from 'react';
-import { FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane, FaHatWizard } from 'react-icons/fa';
 import { VscRefresh, VscTrash } from 'react-icons/vsc';
-import { FaHatWizard } from 'react-icons/fa';
-
 import Markdown from './components/Markdown';
+import Header from './components/Header';
 
-const UserAvatar = () => (
-  <Flex flexShrink={0}>
-    <Avatar size="sm" color="white" bg="blue.500" borderRadius="8px" mt={1} />
-  </Flex>
-);
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const UserAvatar = () => <Avatar size="sm" color="white" bg="blue.500" borderRadius="8px" mt={1} />;
 
 const AssistantAvatar = () => (
-  <Flex flexShrink={0}>
-    <Avatar
-      icon={<FaHatWizard />}
-      size="sm"
-      color="white"
-      bg="purple.500"
-      borderRadius="8px"
-      mt={1}
-    />
-  </Flex>
+  <Avatar
+    icon={<FaHatWizard />}
+    size="sm"
+    color="white"
+    bg="purple.500"
+    borderRadius="8px"
+    mt={1}
+  />
 );
 
 const localStorageKey = 'chatMessages';
 
 export default function Chat() {
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
 
-  // Initialize messages from local storage or default to an empty array if not found
   const [storedMessages, setStoredMessages] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedMessages = localStorage.getItem(localStorageKey);
@@ -54,7 +49,9 @@ export default function Chat() {
     return [];
   });
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, reload } = useChat({ initialMessages: storedMessages });
+  const { messages, input, handleInputChange, handleSubmit, isLoading, reload } = useChat({
+    initialMessages: storedMessages,
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -62,127 +59,100 @@ export default function Chat() {
     }
   }, [messages]);
 
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (input.trim().length <= 0) return;
-    if (isLoading) return;
-    if (event.shiftKey) return;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      formRef.current?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  };
+  }, [messages]);
+
 
   const handleReset = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(localStorageKey);
     }
-    window.location.reload()
+    window.location.reload();
+    toast({
+      title: 'Chat reset',
+      description: 'All messages have been cleared.',
+      status: 'info',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   return (
-    <>
-      <Flex
-        flexDir="column"
-        gap={40}
-        justify="space-between"
-        flex={1}
-        height="100%"
-        overflowY="auto"
-        w="full"
-        padding="24px"
-      >
-        <Flex
-          flexDir="column"
-          align="center"
-          gap={2}
-          paddingBottom="150px"
-          maxW={1100}
-          w="full"
-          margin="0 auto"
-        >
-          <Heading as="h1" size="lg">
-            Debugging wizard 🧙‍♂️
-          </Heading>
-          <Text as="p" textAlign="center">
-            Bugs shall not pass!! 🐛
-          </Text>
-          {messages.map((m, index) => (
-            <Fragment key={index}>
-              <Divider />
-              <Flex my={4} w="full">
-                {m.role === 'assistant' ? <AssistantAvatar /> : <UserAvatar />}
-                <Box px={4} py={2} ml={4}>
-                  <Markdown>{m.content}</Markdown>
-                </Box>
-              </Flex>
-            </Fragment>
-          ))}
+    <Flex direction="column" h="100vh" bg="gray.900">
+      <Header />
+
+      <VStack flex={1} overflowY="auto" spacing={4} p={4} pt={150} ref={chatContainerRef}>
+        {messages.map((message, i) => (
+          <Flex
+            key={i}
+            alignSelf={message.role === 'user' ? 'flex-end' : 'flex-start'}
+            animation={`${fadeIn} 0.5s ease-out`}
+            maxW="70%"
+          >
+            {message.role === 'assistant' && <AssistantAvatar />}
+            <Box
+              ml={message.role === 'assistant' ? 2 : 0}
+              mr={message.role === 'user' ? 2 : 0}
+              p={3}
+              borderRadius="lg"
+              bg={message.role === 'user' ? 'blue.700' : 'purple.700'}
+              boxShadow="md"
+            >
+              <Markdown>{message.content}</Markdown>
+            </Box>
+            {message.role === 'user' && <UserAvatar />}
+          </Flex>
+        ))}
+      </VStack>
+
+      <Box as="form" onSubmit={handleSubmit} p={4} bg="gray.800">
+        <Flex>
+          <Input
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your message here..."
+            bg="gray.700"
+            color="white"
+            border="none"
+            _focus={{ boxShadow: 'outline' }}
+          />
+          <IconButton
+            aria-label="Submit"
+            type="submit"
+            icon={<FaPaperPlane />}
+            isLoading={isLoading}
+            ml={2}
+            colorScheme="blue"
+            _hover={{ bg: 'blue.600' }}
+          />
         </Flex>
-      </Flex>
-      <Box
-        ref={formRef}
-        as="form"
-        onSubmit={handleSubmit}
-        w="full"
-        position="absolute"
-        pointerEvents="none"
-        bottom="0"
-        left="0"
-        bg="linear-gradient(transparent, 50%, rgb(26, 32, 44))"
-        paddingX={{ base: 0, md: 4 }}
-      >
-        <Stack
-          spacing={4}
-          mt={16}
-          position="relative"
-          marginX={{ base: 0, md: 'auto' }}
-          maxW={{ base: '100%', md: '43em', xl: '75em' }}
-          marginBottom={{ base: 0, md: 50 }}
-          pointerEvents="all"
-        >
-          <InputGroup size="md">
-            <Textarea
-              ref={textAreaRef}
-              bg="rgb(26, 32, 44)"
-              resize="none"
-              placeholder="Type here..."
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-              borderRadius={{ base: 0, md: '6px' }}
-              borderWidth={{ base: 0, md: '1px' }}
-              borderTopWidth="1px"
-              paddingRight="50px"
-            />
-            <InputRightElement width="6em" mt={1}>
-              <IconButton
-                aria-label="Reset"
-                disabled={isLoading}
-                variant="ghost"
-                icon={<VscRefresh />}
-                colorScheme="blue"
-                onClick={() => reload()}
-              />
-              <IconButton
-                aria-label="Send"
-                disabled={isLoading}
-                type="submit"
-                variant="ghost"
-                icon={<FaPaperPlane />}
-                colorScheme="blue"
-              />
-              <IconButton
-                aria-label="Reset"
-                disabled={isLoading}
-                variant="ghost"
-                icon={<VscTrash/>}
-                colorScheme="red"
-                onClick={() => handleReset()}
-              />
-            </InputRightElement>
-          </InputGroup>
-        </Stack>
+        <Flex justify="flex-end" mt={2}>
+          <IconButton
+            aria-label="Reload"
+            icon={<VscRefresh />}
+            onClick={() => reload()}
+            mr={2}
+            size="sm"
+            variant="ghost"
+            colorScheme="gray"
+            _hover={{ bg: 'gray.700' }}
+          />
+          <IconButton
+            aria-label="Reset"
+            icon={<VscTrash />}
+            onClick={handleReset}
+            size="sm"
+            variant="ghost"
+            colorScheme="red"
+            _hover={{ bg: 'red.700' }}
+          />
+        </Flex>
       </Box>
-    </>
+    </Flex>
   );
+
 }
