@@ -8,8 +8,8 @@ import {
   IconButton,
   useToast,
   VStack,
-  Input,
-  keyframes
+  keyframes,
+  Textarea
 } from '@chakra-ui/react';
 import { FaPaperPlane, FaHatWizard } from 'react-icons/fa';
 import { VscRefresh, VscTrash } from 'react-icons/vsc';
@@ -37,7 +37,7 @@ const AssistantAvatar = () => (
 const localStorageKey = 'chatMessages';
 
 export default function Chat() {
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
 
@@ -80,6 +80,13 @@ export default function Chat() {
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
   return (
     <Flex direction="column" h="100vh" bg="gray.900">
       <Header />
@@ -110,7 +117,7 @@ export default function Chat() {
 
       <Box as="form" onSubmit={handleSubmit} p={4} bg="gray.800">
         <Flex>
-          <Input
+        <Textarea
             ref={inputRef}
             value={input}
             onChange={handleInputChange}
@@ -119,7 +126,21 @@ export default function Chat() {
             color="white"
             border="none"
             _focus={{ boxShadow: 'outline' }}
+            resize="vertical"
+            minHeight="75px"
+            mb={2}
+            onKeyDown={handleKeyDown}
           />
+          {/* <Input
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your message here..."
+            bg="gray.700"
+            color="white"
+            border="none"
+            _focus={{ boxShadow: 'outline' }}
+          /> */}
           <IconButton
             aria-label="Submit"
             type="submit"
